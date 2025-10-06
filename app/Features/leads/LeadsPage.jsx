@@ -177,29 +177,13 @@ const LeadsPage = ({ route, onBack }) => {
             </View>
           </View>
           
-          {/* Bucket Selection and Controls */}
-          <View style={styles.controls}>
-            <View style={styles.bucketSelector}>
-              <Text style={styles.selectorLabel}>Filter by Bucket:</Text>
-              <View style={styles.bucketList}>
-                {buckets.map((bucket) => (
-                  <TouchableOpacity
-                    key={bucket.id}
-                    style={[
-                      styles.bucketOption,
-                      bucketId === bucket.id && styles.bucketOptionSelected
-                    ]}
-                    onPress={() => handleBucketChange(bucket.id)}
-                  >
-                    <Text style={[
-                      styles.bucketOptionText,
-                      bucketId === bucket.id && styles.bucketOptionTextSelected
-                    ]}>
-                      {bucket.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+          {/* Bucket Name and Refresh Button */}
+          <View style={styles.topControls}>
+            <View style={styles.bucketNameContainer}>
+              <Text style={styles.bucketNameLabel}>Bucket:</Text>
+              <Text style={styles.bucketNameText}>
+                {currentBucket?.name || 'Unknown'}
+              </Text>
             </View>
             
             <TouchableOpacity
@@ -213,10 +197,34 @@ const LeadsPage = ({ route, onBack }) => {
             </TouchableOpacity>
           </View>
           
+          {/* Bucket Selection */}
+          <View style={styles.bucketSelector}>
+            <Text style={styles.selectorLabel}>Filter by Bucket:</Text>
+            <View style={styles.bucketList}>
+              {buckets.map((bucket) => (
+                <TouchableOpacity
+                  key={bucket.id}
+                  style={[
+                    styles.bucketOption,
+                    bucketId === bucket.id && styles.bucketOptionSelected
+                  ]}
+                  onPress={() => handleBucketChange(bucket.id)}
+                >
+                  <Text style={[
+                    styles.bucketOptionText,
+                    bucketId === bucket.id && styles.bucketOptionTextSelected
+                  ]}>
+                    {bucket.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          
           {/* Lead count display */}
           <View style={styles.leadCount}>
             <Text style={styles.leadCountText}>
-              {leads.length} leads • {currentBucket?.name || 'Unknown'}
+              {leads.length} leads in this bucket
             </Text>
           </View>
         </View>
@@ -293,8 +301,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
   },
-  controls: {
+  topControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
+  },
+  bucketNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  bucketNameLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8E8E93',
+    marginRight: 6,
+  },
+  bucketNameText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   bucketSelector: {
     marginBottom: 10,
@@ -331,7 +358,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   refreshButton: {
-    alignSelf: 'flex-start',
     paddingHorizontal: 14,
     paddingVertical: 6,
     backgroundColor: '#007AFF',
