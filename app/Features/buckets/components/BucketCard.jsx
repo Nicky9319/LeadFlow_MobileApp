@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const BucketCard = ({ bucket, onUpdateBucket, onDeleteBucket }) => {
+const BucketCard = ({ bucket, onUpdateBucket, onDeleteBucket, onNavigateToLeads }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(bucket.name);
+  const lastTapRef = useRef(0);
 
   const handleSave = () => {
     if (editName.trim() !== bucket.name && editName.trim() !== '') {
@@ -21,8 +22,24 @@ const BucketCard = ({ bucket, onUpdateBucket, onDeleteBucket }) => {
     onDeleteBucket(bucket.id);
   };
 
+  const handleCardPress = () => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+    
+    if (lastTapRef.current && (now - lastTapRef.current) < DOUBLE_PRESS_DELAY) {
+      // Double tap detected
+      if (onNavigateToLeads) {
+        onNavigateToLeads(bucket.id);
+      }
+    } else {
+      // Single tap - do nothing for now, or could add single tap functionality
+    }
+    
+    lastTapRef.current = now;
+  };
+
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={handleCardPress} activeOpacity={0.7}>
       <View style={styles.cardContent}>
         <View style={styles.idSection}>
           <Text style={styles.idLabel}>ID:</Text>
@@ -76,7 +93,7 @@ const BucketCard = ({ bucket, onUpdateBucket, onDeleteBucket }) => {
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

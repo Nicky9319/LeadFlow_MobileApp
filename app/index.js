@@ -1,3 +1,3 @@
-import { MainPage } from './Features/main';
+import MainPage from './Features/main';
 
 export default MainPage;

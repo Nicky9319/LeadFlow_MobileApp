@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, T
 import { useDispatch, useSelector } from 'react-redux';
 import { addNewBucket, deleteBucket as deleteBucketService, getAllBuckets, updateBucketName } from '../../../services/bucketsService';
 import { addBucket, deleteBucket, setBuckets, setError, setLoading, updateBucket } from '../../../store/slices/bucketsSlice';
+import LeadsPage from '../leads/LeadsPage';
 import AddBucketModal from './components/AddBucketModal';
 import BucketCard from './components/BucketCard';
 
@@ -12,6 +13,8 @@ const BucketsPage = () => {
   const bucketsArray = Array.isArray(buckets) ? buckets : [];
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentView, setCurrentView] = useState('buckets'); // 'buckets' or 'leads'
+  const [selectedBucketId, setSelectedBucketId] = useState(null);
 
   // Function to fetch buckets
   const fetchBuckets = async () => {
@@ -116,12 +119,25 @@ const BucketsPage = () => {
     );
   };
 
+  // Function to handle navigation to leads page
+  const handleNavigateToLeads = (bucketId) => {
+    setSelectedBucketId(bucketId);
+    setCurrentView('leads');
+  };
+
+  // Function to handle back navigation from leads
+  const handleBackToBuckets = () => {
+    setCurrentView('buckets');
+    setSelectedBucketId(null);
+  };
+
   const renderBucketCard = ({ item, index }) => (
     <BucketCard
       key={item && item.id ? item.id : `bucket-${index}`}
       bucket={item}
       onUpdateBucket={handleUpdateBucket}
       onDeleteBucket={handleDeleteBucket}
+      onNavigateToLeads={handleNavigateToLeads}
     />
   );
 
@@ -138,6 +154,16 @@ const BucketsPage = () => {
       <Text style={styles.loadingText}>Loading buckets...</Text>
     </View>
   );
+
+  // If we're viewing leads, show the leads page
+  if (currentView === 'leads') {
+    return (
+      <LeadsPage 
+        route={{ params: { bucketId: selectedBucketId } }}
+        onBack={handleBackToBuckets}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
