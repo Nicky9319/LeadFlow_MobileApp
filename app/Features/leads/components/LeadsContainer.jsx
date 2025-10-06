@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { Dimensions, PanResponder, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import LeadCard from './LeadCard';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -8,6 +8,7 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editValue, setEditValue] = useState('');
+  const [isSwipeEnabled, setIsSwipeEnabled] = useState(true);
 
   // Reset to first lead when leads change
   useEffect(() => {
@@ -49,11 +50,43 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
     handleCounterEdit();
   };
 
-  // Handle touch gestures (simplified version without PanGestureHandler)
-  const handleTouchStart = (event) => {
-    // Store initial touch position for simple swipe detection
-    // This is a simplified version - for full gesture support, use react-native-gesture-handler
-  };
+  // Create PanResponder for swipe gestures
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only respond to horizontal swipes and when swipe is enabled
+        return isSwipeEnabled && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 20;
+      },
+      onPanResponderGrant: () => {
+        // Gesture started
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Handle move if needed (for visual feedback)
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        // Handle swipe completion
+        if (leads.length <= 1) return;
+        
+        const swipeThreshold = 50; // Minimum distance for a swipe
+        
+        if (gestureState.dx > swipeThreshold) {
+          // Swipe right - go to previous lead
+          handlePrevious();
+        } else if (gestureState.dx < -swipeThreshold) {
+          // Swipe left - go to next lead
+          handleNext();
+        }
+      },
+      onPanResponderTerminate: () => {
+        // Gesture was terminated
+      },
+    })
+  ).current;
+
+  // Disable swipe when editing to prevent conflicts
+  useEffect(() => {
+    setIsSwipeEnabled(!isEditingCounter);
+  }, [isEditingCounter]);
 
   if (leads.length === 0) {
     return (
@@ -131,20 +164,24 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
       </View>
 
       {/* Card Container */}
-      <View style={styles.cardContainer}>
+      <View 
+        style={styles.cardContainer}
+        {...panResponder.panHandlers}
+      >
         <LeadCard 
           lead={leads[currentIndex]} 
           isActive={true}
           updateLeadNotes={updateLeadNotes}
           updateLeadStatus={updateLeadStatus}
           deleteLead={deleteLead}
+          onEditingChange={setIsSwipeEnabled} // Pass callback to disable swipe during editing
         />
       </View>
 
       {/* Navigation Info */}
       <View style={styles.navigationInfo}>
         <Text style={styles.navigationInfoText}>
-          Use navigation buttons to move between leads
+          Swipe left/right or use buttons to navigate
         </Text>
       </View>
     </View>

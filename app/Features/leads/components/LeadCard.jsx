@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, Dimensions, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead }) => {
+const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange }) => {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [editedStatus, setEditedStatus] = useState('');
+
+  // Notify parent when editing state changes
+  useEffect(() => {
+    const isEditing = isEditingNotes || isEditingStatus;
+    if (onEditingChange) {
+      onEditingChange(!isEditing); // Pass !isEditing because we want to disable swipe when editing
+    }
+  }, [isEditingNotes, isEditingStatus, onEditingChange]);
 
   if (!lead) return null;
 
