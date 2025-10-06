@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllBuckets } from '../../../services/bucketsService';
 import { deleteLead as deleteLeadService, getAllLeads, updateLeadNotes, updateLeadStatus } from '../../../services/leadsService';
@@ -159,69 +159,75 @@ const LeadsPage = ({ route, onBack }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.title}>Leads</Text>
-            <Text style={styles.subtitle}>
-              Browse through your leads one at a time
-            </Text>
-          </View>
-        </View>
-        
-        {/* Bucket Selection and Controls */}
-        <View style={styles.controls}>
-          <View style={styles.bucketSelector}>
-            <Text style={styles.selectorLabel}>Filter by Bucket:</Text>
-            <View style={styles.bucketList}>
-              {buckets.map((bucket) => (
-                <TouchableOpacity
-                  key={bucket.id}
-                  style={[
-                    styles.bucketOption,
-                    bucketId === bucket.id && styles.bucketOptionSelected
-                  ]}
-                  onPress={() => handleBucketChange(bucket.id)}
-                >
-                  <Text style={[
-                    styles.bucketOptionText,
-                    bucketId === bucket.id && styles.bucketOptionTextSelected
-                  ]}>
-                    {bucket.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <Text style={styles.title}>Leads</Text>
+              <Text style={styles.subtitle}>
+                Browse through your leads
+              </Text>
             </View>
           </View>
           
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleRefetchLeads}
-            disabled={loading}
-          >
-            <Text style={styles.refreshButtonText}>
-              {loading ? 'Loading...' : '↻ Refresh'}
+          {/* Bucket Selection and Controls */}
+          <View style={styles.controls}>
+            <View style={styles.bucketSelector}>
+              <Text style={styles.selectorLabel}>Filter by Bucket:</Text>
+              <View style={styles.bucketList}>
+                {buckets.map((bucket) => (
+                  <TouchableOpacity
+                    key={bucket.id}
+                    style={[
+                      styles.bucketOption,
+                      bucketId === bucket.id && styles.bucketOptionSelected
+                    ]}
+                    onPress={() => handleBucketChange(bucket.id)}
+                  >
+                    <Text style={[
+                      styles.bucketOptionText,
+                      bucketId === bucket.id && styles.bucketOptionTextSelected
+                    ]}>
+                      {bucket.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={handleRefetchLeads}
+              disabled={loading}
+            >
+              <Text style={styles.refreshButtonText}>
+                {loading ? 'Loading...' : '↻ Refresh'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Lead count display */}
+          <View style={styles.leadCount}>
+            <Text style={styles.leadCountText}>
+              {leads.length} leads • {currentBucket?.name || 'Unknown'}
             </Text>
-          </TouchableOpacity>
+          </View>
         </View>
         
-        {/* Lead count display */}
-        <View style={styles.leadCount}>
-          <Text style={styles.leadCountText}>
-            Showing {leads.length} leads from bucket: {currentBucket?.name || 'Unknown'}
-          </Text>
-        </View>
-      </View>
-      
-      <LeadsContainer 
-        leads={leads} 
-        updateLeadNotes={handleUpdateLeadNotes} 
-        updateLeadStatus={handleUpdateLeadStatus} 
-        deleteLead={handleDeleteLead} 
-      />
+        <LeadsContainer 
+          leads={leads} 
+          updateLeadNotes={handleUpdateLeadNotes} 
+          updateLeadStatus={handleUpdateLeadStatus} 
+          deleteLead={handleDeleteLead} 
+        />
+      </ScrollView>
     </View>
   );
 };
@@ -230,6 +236,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -243,21 +255,21 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 48,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#1C1C1E',
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   backButton: {
-    marginRight: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    marginRight: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: '#111111',
     borderRadius: 8,
     borderWidth: 1,
@@ -265,42 +277,42 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#E5E5E7',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
   },
   headerContent: {
     flex: 1,
   },
   title: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#8E8E93',
   },
   controls: {
-    marginBottom: 16,
-  },
-  bucketSelector: {
     marginBottom: 12,
   },
+  bucketSelector: {
+    marginBottom: 10,
+  },
   selectorLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#E5E5E7',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bucketList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   bucketOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     backgroundColor: '#1C1C1E',
     borderRadius: 6,
     borderWidth: 1,
@@ -311,7 +323,7 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
   },
   bucketOptionText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#E5E5E7',
   },
   bucketOptionTextSelected: {
@@ -320,21 +332,21 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     backgroundColor: '#007AFF',
     borderRadius: 8,
   },
   refreshButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   leadCount: {
-    marginTop: 8,
+    marginTop: 6,
   },
   leadCountText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#8E8E93',
   },
 });

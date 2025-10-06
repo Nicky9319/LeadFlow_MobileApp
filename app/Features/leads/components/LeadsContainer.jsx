@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import LeadCard from './LeadCard';
 
@@ -153,36 +153,36 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: screenWidth < 400 ? 12 : 16,
-    paddingTop: screenWidth < 400 ? 12 : 16,
+    paddingTop: screenWidth < 400 ? 8 : 12,
+    paddingBottom: 24,
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 40,
+    minHeight: 300,
   },
   emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#1C1C1E',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   emptyIconText: {
-    fontSize: 32,
+    fontSize: 28,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#8E8E93',
     textAlign: 'center',
   },
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   counterSection: {
     flex: 1,
@@ -198,39 +198,39 @@ const styles = StyleSheet.create({
   counterEdit: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   counterDisplay: {
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   counterLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#E5E5E7',
   },
   counterInput: {
-    width: 48,
-    height: 32,
+    width: 44,
+    height: 30,
     backgroundColor: '#1C1C1E',
     borderWidth: 2,
     borderColor: '#007AFF',
     borderRadius: 6,
-    paddingHorizontal: 8,
-    fontSize: 14,
+    paddingHorizontal: 6,
+    fontSize: 13,
     color: '#FFFFFF',
     textAlign: 'center',
   },
   counterText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#E5E5E7',
   },
   navigationButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   navButton: {
-    width: screenWidth < 400 ? 44 : 48,
-    height: screenWidth < 400 ? 44 : 48,
-    borderRadius: screenWidth < 400 ? 22 : 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#1C1C1E',
     justifyContent: 'center',
     alignItems: 'center',
@@ -241,37 +241,35 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   navButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#E5E5E7',
     fontWeight: '600',
   },
   progressContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   progressBar: {
     width: '100%',
-    height: 8,
+    height: 6,
     backgroundColor: '#1C1C1E',
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#007AFF',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   cardContainer: {
-    flex: 1,
-    minHeight: 500,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   navigationInfo: {
-    marginTop: 24,
+    marginTop: 16,
+    marginBottom: 8,
     alignItems: 'center',
   },
   navigationInfoText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#8E8E93',
     textAlign: 'center',
   },
