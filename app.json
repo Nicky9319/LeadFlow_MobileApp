@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "donnaai",
-    "slug": "donnaai",
+    "name": "LeadFlow Mobile",
+    "slug": "leadflow-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "donnaai",
+    "scheme": "leadflow-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "donnai.com",
+      "bundleIdentifier": "com.leadflow.mobile",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -21,7 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "donnai.com"
+      "package": "com.leadflow.mobile"
     },
     "web": {
       "bundler": "metro",
