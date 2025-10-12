@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Dimensions, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Clipboard, Dimensions, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange, onEditingStart }) => {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [editedStatus, setEditedStatus] = useState('');
+  const [isOpeningLink, setIsOpeningLink] = useState(false);
 
   // Notify parent when editing state changes
   useEffect(() => {
@@ -70,36 +71,59 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
 
   const extractUsernameFromUrl = (platform, url) => {
     try {
+      if (!url || typeof url !== 'string') return '';
+      
       const u = new URL(url);
-      const host = u.hostname.replace('www.', '');
+      const host = u.hostname.replace('www.', '').toLowerCase();
       const segments = u.pathname.split('/').filter(Boolean);
 
       switch (platform) {
         case 'instagram':
-          // https://instagram.com/{username}
-          return segments[0] || '';
-        case 'twitter':
-          // https://twitter.com/{username} or https://x.com/{username}
-          if (host === 'twitter.com' || host === 'x.com') return segments[0] || '';
-          return '';
-        case 'linkedin':
-          // https://linkedin.com/in/{slug}
-          if (segments[0] === 'in') return segments[1] || '';
-          return '';
-        case 'pinterest':
-          // https://pinterest.com/{username}/
-          if (host.includes('pinterest.com')) return segments[0] || '';
-          return '';
-        case 'reddit':
-          // https://reddit.com/user/{username} or /u/{username}
-          if (host.includes('reddit.com')) {
-            if (segments[0] === 'user' || segments[0] === 'u') return segments[1] || '';
+          // https://instagram.com/{username} or https://www.instagram.com/{username}
+          if (host === 'instagram.com' || host === 'instagr.am') {
+            return segments[0] || '';
           }
           return '';
+          
+        case 'twitter':
+          // https://twitter.com/{username} or https://x.com/{username}
+          if (host === 'twitter.com' || host === 'x.com') {
+            return segments[0] || '';
+          }
+          return '';
+          
+        case 'linkedin':
+          // https://linkedin.com/in/{slug} or https://www.linkedin.com/in/{slug}
+          if (host === 'linkedin.com') {
+            if (segments[0] === 'in') return segments[1] || '';
+            // Sometimes LinkedIn URLs don't have /in/ prefix
+            if (segments.length > 0) return segments[0] || '';
+          }
+          return '';
+          
+        case 'pinterest':
+          // https://pinterest.com/{username}/ or https://www.pinterest.com/{username}/
+          if (host === 'pinterest.com') {
+            return segments[0] || '';
+          }
+          return '';
+          
+        case 'reddit':
+          // https://reddit.com/user/{username} or https://www.reddit.com/u/{username}
+          if (host === 'reddit.com') {
+            if (segments[0] === 'user' || segments[0] === 'u') {
+              return segments[1] || '';
+            }
+            // Sometimes Reddit URLs are just /u/{username}
+            if (segments.length > 0) return segments[0] || '';
+          }
+          return '';
+          
         default:
           return '';
       }
-    } catch (_) {
+    } catch (error) {
+      console.log('Error extracting username from URL:', error);
       return '';
     }
   };
@@ -121,72 +145,215 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
 
     switch (p) {
       case 'instagram':
-        return username ? `instagram://user?username=${encodeURIComponent(username)}` : 'instagram://';
+        if (username) {
+          return `instagram://user?username=${encodeURIComponent(username)}`;
+        }
+        // Fallback to opening Instagram app
+        return 'instagram://';
+        
       case 'twitter':
-        return username ? `twitter://user?screen_name=${encodeURIComponent(username)}` : 'twitter://';
+        if (username) {
+          return `twitter://user?screen_name=${encodeURIComponent(username)}`;
+        }
+        // Fallback to opening Twitter app
+        return 'twitter://';
+        
       case 'linkedin':
-        // LinkedIn deep links are not fully documented; try profile slug when available
-        return username ? `linkedin://in/${encodeURIComponent(username)}` : 'linkedin://';
+        if (username) {
+          return `linkedin://in/${encodeURIComponent(username)}`;
+        }
+        // Fallback to opening LinkedIn app
+        return 'linkedin://';
+        
       case 'pinterest':
-        return username ? `pinterest://user/${encodeURIComponent(username)}` : 'pinterest://';
+        if (username) {
+          return `pinterest://user/${encodeURIComponent(username)}`;
+        }
+        // Fallback to opening Pinterest app
+        return 'pinterest://';
+        
       case 'reddit':
-        return username ? `reddit://user/${encodeURIComponent(username)}` : 'reddit://';
+        if (username) {
+          return `reddit://user/${encodeURIComponent(username)}`;
+        }
+        // Fallback to opening Reddit app
+        return 'reddit://';
+        
       case 'email': {
         const email = extractEmailFromUrl(url) || (lead?.username?.includes('@') ? lead.username : '');
         return email ? `mailto:${email}` : null;
       }
+      
+      case 'gmail':
+        const email = extractEmailFromUrl(url) || (lead?.username?.includes('@') ? lead.username : '');
+        if (email) {
+          return `mailto:${email}`;
+        }
+        // Fallback to Gmail app
+        return 'googlegmail://';
+        
       default:
         return null;
     }
   };
 
   const handleLinkPress = async (url) => {
+    if (isOpeningLink) return; // Prevent multiple simultaneous attempts
+    
+    setIsOpeningLink(true);
     try {
-      // Prefer opening in the native app when possible
+      console.log('Attempting to open URL:', url);
+      
+      // Validate URL first
+      if (!url || (!url.startsWith('http') && !url.startsWith('mailto:'))) {
+        Alert.alert(
+          'Invalid URL', 
+          'This link appears to be invalid or malformed. Please check the URL format.',
+          [
+            { text: 'Copy URL', onPress: () => Clipboard.setString(url || '') },
+            { text: 'OK', style: 'default' }
+          ]
+        );
+        return;
+      }
+
       const platform = normalizePlatform(lead.platform);
       const deepLink = buildNativeDeepLink(platform, url);
+      
+      console.log('Platform:', platform, 'Deep link:', deepLink);
 
-      if (deepLink) {
-        const canOpenDeep = await Linking.canOpenURL(deepLink);
-        if (canOpenDeep) {
-          try {
+      // Try native app first if we have a deep link
+      if (deepLink && deepLink !== url) {
+        try {
+          console.log('Checking if deep link can be opened:', deepLink);
+          const canOpenDeep = await Linking.canOpenURL(deepLink);
+          console.log('Can open deep link:', canOpenDeep);
+          
+          if (canOpenDeep) {
+            console.log('Opening deep link:', deepLink);
             await Linking.openURL(deepLink);
             return;
-          } catch (error) {
-            console.log('Deep link failed, will fallback to web URL:', error);
+          } else {
+            console.log('Deep link not available, falling back to web');
           }
+        } catch (error) {
+          console.log('Deep link check failed:', error);
         }
       }
 
-      // Fallback to web browser - try Chrome first, then default browser
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
+      // Try Android intent-based approach for better app detection
+      if (platform && platform !== 'email') {
         try {
-          // Try to open in Chrome specifically
-          const chromeUrl = url.replace(/^https?:\/\//, 'googlechrome://navigate?url=');
-          const canOpenChrome = await Linking.canOpenURL(chromeUrl);
-          if (canOpenChrome) {
-            await Linking.openURL(chromeUrl);
+          const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.${platform}.android;end`;
+          console.log('Trying Android intent URL:', intentUrl);
+          
+          const canOpenIntent = await Linking.canOpenURL(intentUrl);
+          if (canOpenIntent) {
+            console.log('Opening with Android intent');
+            await Linking.openURL(intentUrl);
             return;
           }
         } catch (error) {
-          console.log('Chrome not available, using default browser:', error);
+          console.log('Android intent failed:', error);
+        }
+      }
+
+      // Fallback to web browser
+      console.log('Falling back to web browser for URL:', url);
+      
+      // First, try to open in Chrome if available
+      try {
+        const chromeUrl = `googlechrome://navigate?url=${encodeURIComponent(url)}`;
+        console.log('Trying Chrome URL:', chromeUrl);
+        
+        const canOpenChrome = await Linking.canOpenURL(chromeUrl);
+        console.log('Can open Chrome:', canOpenChrome);
+        
+        if (canOpenChrome) {
+          console.log('Opening in Chrome');
+          await Linking.openURL(chromeUrl);
+          return;
+        }
+      } catch (error) {
+        console.log('Chrome not available:', error);
+      }
+
+      // Try alternative Chrome schemes
+      try {
+        const chromeUrl2 = `googlechrome://${url.replace(/^https?:\/\//, '')}`;
+        console.log('Trying alternative Chrome URL:', chromeUrl2);
+        
+        const canOpenChrome2 = await Linking.canOpenURL(chromeUrl2);
+        if (canOpenChrome2) {
+          console.log('Opening in Chrome (alternative)');
+          await Linking.openURL(chromeUrl2);
+          return;
+        }
+      } catch (error) {
+        console.log('Alternative Chrome scheme failed:', error);
+      }
+
+      // Final fallback to default browser
+      try {
+        console.log('Opening in default browser:', url);
+        const canOpenDefault = await Linking.canOpenURL(url);
+        console.log('Can open in default browser:', canOpenDefault);
+        
+        if (canOpenDefault) {
+          await Linking.openURL(url);
+        } else {
+          throw new Error('Cannot open URL in any browser');
+        }
+      } catch (error) {
+        console.error('Failed to open URL in default browser:', error);
+        const platform = normalizePlatform(lead.platform);
+        let errorMessage = 'Unable to open this link. ';
+        
+        if (platform === 'email') {
+          errorMessage += 'No email app is installed or configured on this device.';
+        } else if (platform && platform !== 'unknown') {
+          errorMessage += `The ${platform} app is not installed, and no web browser is available to open the link.`;
+        } else {
+          errorMessage += 'No web browser is installed or available on this device.';
         }
         
-        // Fallback to default browser
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'Cannot open this URL');
+        Alert.alert(
+          'Cannot Open Link', 
+          errorMessage,
+          [
+            { text: 'Copy URL', onPress: () => Clipboard.setString(url) },
+            { text: 'OK', style: 'default' }
+          ]
+        );
       }
     } catch (error) {
-      console.error('Error opening URL:', error);
-      Alert.alert('Error', 'Failed to open URL');
+      console.error('Error in handleLinkPress:', error);
+      Alert.alert(
+        'Error', 
+        'An unexpected error occurred while trying to open the link. This might be due to device restrictions or app permissions.',
+        [
+          { text: 'Copy URL', onPress: () => Clipboard.setString(url) },
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    } finally {
+      setIsOpeningLink(false);
     }
   };
 
   const handleDeleteClick = () => {
     if (deleteLead) {
       deleteLead(lead.leadId);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await Clipboard.setString(lead.url);
+      Alert.alert('Copied!', 'URL has been copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+      Alert.alert('Error', 'Failed to copy URL to clipboard');
     }
   };
 
@@ -266,12 +433,20 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
       {lead.url && (
         <View style={styles.urlSection}>
           <TouchableOpacity 
-            style={styles.urlButton}
+            style={[styles.urlButton, isOpeningLink && styles.urlButtonLoading]}
             onPress={() => handleLinkPress(lead.url)}
+            disabled={isOpeningLink}
           >
             <Text style={styles.urlText}>
-              {lead.url.replace('https://', '').replace('http://', '')}
+              {isOpeningLink ? 'Opening...' : lead.url.replace('https://', '').replace('http://', '')}
             </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.copyButton}
+            onPress={handleCopyUrl}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.copyButtonText}>📋</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -280,14 +455,6 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
       <View style={styles.statusSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Status</Text>
-          {!isEditingStatus && (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={handleStatusEdit}
-            >
-              <Text style={styles.editIcon}>✎</Text>
-            </TouchableOpacity>
-          )}
         </View>
         
         {isEditingStatus ? (
@@ -344,14 +511,6 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
       <View style={styles.notesSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Notes</Text>
-          {!isEditingNotes && (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={handleNotesEdit}
-            >
-              <Text style={styles.editIcon}>✎</Text>
-            </TouchableOpacity>
-          )}
         </View>
         
         {isEditingNotes ? (
@@ -485,8 +644,12 @@ const styles = StyleSheet.create({
   },
   urlSection: {
     marginBottom: screenWidth < 400 ? 12 : 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   urlButton: {
+    flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
     backgroundColor: '#1C1C1E',
@@ -502,6 +665,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
+  urlButtonLoading: {
+    opacity: 0.7,
+    backgroundColor: '#2D2D2F',
+  },
+  copyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2D2D2F',
+    minHeight: 40,
+    minWidth: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  copyButtonText: {
+    fontSize: 16,
+    color: '#8E8E93',
+  },
   statusSection: {
     marginBottom: screenWidth < 400 ? 12 : 14,
   },
@@ -509,28 +692,12 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#E5E5E7',
-  },
-  editButton: {
-    padding: 6,
-    borderRadius: 6,
-    backgroundColor: 'rgba(142, 142, 147, 0.1)',
-    minWidth: 32,
-    minHeight: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editIcon: {
-    fontSize: 13,
-    color: '#8E8E93',
   },
   editContainer: {
     gap: 8,
