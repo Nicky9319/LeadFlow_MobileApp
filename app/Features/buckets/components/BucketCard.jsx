@@ -23,19 +23,10 @@ const BucketCard = ({ bucket, onUpdateBucket, onDeleteBucket, onNavigateToLeads 
   };
 
   const handleCardPress = () => {
-    const now = Date.now();
-    const DOUBLE_PRESS_DELAY = 300;
-    
-    if (lastTapRef.current && (now - lastTapRef.current) < DOUBLE_PRESS_DELAY) {
-      // Double tap detected
-      if (onNavigateToLeads) {
-        onNavigateToLeads(bucket.id);
-      }
-    } else {
-      // Single tap - do nothing for now, or could add single tap functionality
+    // Single tap to navigate to leads
+    if (onNavigateToLeads) {
+      onNavigateToLeads(bucket.id);
     }
-    
-    lastTapRef.current = now;
   };
 
   return (

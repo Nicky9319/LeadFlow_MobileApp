@@ -4,7 +4,7 @@ import LeadCard from './LeadCard';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteLead }) => {
+const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteLead, onEditingStart }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -175,6 +175,7 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
           updateLeadStatus={updateLeadStatus}
           deleteLead={deleteLead}
           onEditingChange={setIsSwipeEnabled} // Pass callback to disable swipe during editing
+          onEditingStart={onEditingStart} // Pass callback to scroll when editing starts
         />
       </View>
 

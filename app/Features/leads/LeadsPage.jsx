@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllBuckets } from '../../../services/bucketsService';
 import { deleteLead as deleteLeadService, getAllLeads, updateLeadNotes, updateLeadStatus } from '../../../services/leadsService';
@@ -9,9 +9,9 @@ import LeadsContainer from './components/LeadsContainer';
 const LeadsPage = ({ route, onBack }) => {
   const dispatch = useDispatch();
   const { leads, loading, selectedBucketId } = useSelector((state) => state.leads);
-  const { buckets } = useSelector((state) => state.buckets);
   const [bucketsLoading, setBucketsLoading] = useState(true);
   const [currentBucket, setCurrentBucket] = useState(null);
+  const scrollViewRef = useRef(null);
 
   // Get bucketId from route params if available
   const bucketId = route?.params?.bucketId || selectedBucketId;
@@ -28,8 +28,8 @@ const LeadsPage = ({ route, onBack }) => {
     }
   };
 
-  // Fetch buckets from API
-  const fetchBuckets = async () => {
+  // Fetch current bucket info
+  const fetchCurrentBucket = async () => {
     try {
       setBucketsLoading(true);
       const bucketsData = await getAllBuckets();
@@ -37,7 +37,7 @@ const LeadsPage = ({ route, onBack }) => {
       const bucket = bucketsData.find(b => b.id === bucketId);
       setCurrentBucket(bucket);
     } catch (error) {
-      console.error('Error fetching buckets:', error);
+      console.error('Error fetching bucket info:', error);
     } finally {
       setBucketsLoading(false);
     }
@@ -110,17 +110,19 @@ const LeadsPage = ({ route, onBack }) => {
     );
   };
 
-  // Handle bucket selection
-  const handleBucketChange = (newBucketId) => {
-    dispatch(setSelectedBucketId(newBucketId));
-    const bucket = buckets.find(b => b.id === newBucketId);
-    setCurrentBucket(bucket);
-    fetchLeads(newBucketId);
-  };
 
   // Handle refetch leads
   const handleRefetchLeads = () => {
     fetchLeads(bucketId);
+  };
+
+  // Handle scroll to bottom when editing
+  const handleScrollToEditing = () => {
+    if (scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current.scrollToEnd({ animated: true });
+      }, 100);
+    }
   };
 
   // Handle back navigation
@@ -140,18 +142,30 @@ const LeadsPage = ({ route, onBack }) => {
         dispatch(setSelectedBucketId(bucketId));
         await fetchLeads(bucketId);
       }
-      await fetchBuckets();
+      await fetchCurrentBucket();
     };
 
     loadData();
   }, [bucketId]);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      handleBack();
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
+  }, []);
 
   if (loading || bucketsLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
         <Text style={styles.loadingText}>
-          {bucketsLoading ? 'Loading buckets...' : 'Loading leads...'}
+          {bucketsLoading ? 'Loading bucket info...' : 'Loading leads...'}
         </Text>
       </View>
     );
@@ -160,6 +174,7 @@ const LeadsPage = ({ route, onBack }) => {
   return (
     <View style={styles.container}>
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -197,29 +212,6 @@ const LeadsPage = ({ route, onBack }) => {
             </TouchableOpacity>
           </View>
           
-          {/* Bucket Selection */}
-          <View style={styles.bucketSelector}>
-            <Text style={styles.selectorLabel}>Filter by Bucket:</Text>
-            <View style={styles.bucketList}>
-              {buckets.map((bucket) => (
-                <TouchableOpacity
-                  key={bucket.id}
-                  style={[
-                    styles.bucketOption,
-                    bucketId === bucket.id && styles.bucketOptionSelected
-                  ]}
-                  onPress={() => handleBucketChange(bucket.id)}
-                >
-                  <Text style={[
-                    styles.bucketOptionText,
-                    bucketId === bucket.id && styles.bucketOptionTextSelected
-                  ]}>
-                    {bucket.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
           
           {/* Lead count display */}
           <View style={styles.leadCount}>
@@ -233,7 +225,8 @@ const LeadsPage = ({ route, onBack }) => {
           leads={leads} 
           updateLeadNotes={handleUpdateLeadNotes} 
           updateLeadStatus={handleUpdateLeadStatus} 
-          deleteLead={handleDeleteLead} 
+          deleteLead={handleDeleteLead}
+          onEditingStart={handleScrollToEditing}
         />
       </ScrollView>
     </View>
@@ -322,40 +315,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  bucketSelector: {
-    marginBottom: 10,
-  },
-  selectorLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#E5E5E7',
-    marginBottom: 6,
-  },
-  bucketList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  bucketOption: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#1C1C1E',
-  },
-  bucketOptionSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  bucketOptionText: {
-    fontSize: 13,
-    color: '#E5E5E7',
-  },
-  bucketOptionTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '500',
   },
   refreshButton: {
     paddingHorizontal: 14,

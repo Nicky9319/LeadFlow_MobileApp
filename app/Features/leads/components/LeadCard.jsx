@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Dimensions, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange }) => {
+const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange, onEditingStart }) => {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [isEditingStatus, setIsEditingStatus] = useState(false);
@@ -20,6 +20,9 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
   const handleNotesEdit = () => {
     setIsEditingNotes(true);
     setEditedNotes(lead.notes || '');
+    if (onEditingStart) {
+      onEditingStart();
+    }
   };
 
   const handleNotesSave = () => {
@@ -39,6 +42,9 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
   const handleStatusEdit = () => {
     setIsEditingStatus(true);
     setEditedStatus(lead.status || '');
+    if (onEditingStart) {
+      onEditingStart();
+    }
   };
 
   const handleStatusSave = () => {
@@ -54,53 +60,120 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
     setEditedStatus('');
   };
 
+  const normalizePlatform = (rawPlatform) => {
+    const p = rawPlatform?.toLowerCase() || '';
+    if (p === 'insta') return 'instagram';
+    if (p === 'x') return 'twitter';
+    if (p === 'gmail') return 'email';
+    return p;
+  };
+
+  const extractUsernameFromUrl = (platform, url) => {
+    try {
+      const u = new URL(url);
+      const host = u.hostname.replace('www.', '');
+      const segments = u.pathname.split('/').filter(Boolean);
+
+      switch (platform) {
+        case 'instagram':
+          // https://instagram.com/{username}
+          return segments[0] || '';
+        case 'twitter':
+          // https://twitter.com/{username} or https://x.com/{username}
+          if (host === 'twitter.com' || host === 'x.com') return segments[0] || '';
+          return '';
+        case 'linkedin':
+          // https://linkedin.com/in/{slug}
+          if (segments[0] === 'in') return segments[1] || '';
+          return '';
+        case 'pinterest':
+          // https://pinterest.com/{username}/
+          if (host.includes('pinterest.com')) return segments[0] || '';
+          return '';
+        case 'reddit':
+          // https://reddit.com/user/{username} or /u/{username}
+          if (host.includes('reddit.com')) {
+            if (segments[0] === 'user' || segments[0] === 'u') return segments[1] || '';
+          }
+          return '';
+        default:
+          return '';
+      }
+    } catch (_) {
+      return '';
+    }
+  };
+
+  const extractEmailFromUrl = (url) => {
+    try {
+      if (!url) return '';
+      if (url.startsWith('mailto:')) return url.substring('mailto:'.length);
+      const emailMatch = url.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      return emailMatch ? emailMatch[0] : '';
+    } catch (_) {
+      return '';
+    }
+  };
+
+  const buildNativeDeepLink = (platform, url) => {
+    const p = normalizePlatform(platform);
+    const username = extractUsernameFromUrl(p, url) || lead?.username || '';
+
+    switch (p) {
+      case 'instagram':
+        return username ? `instagram://user?username=${encodeURIComponent(username)}` : 'instagram://';
+      case 'twitter':
+        return username ? `twitter://user?screen_name=${encodeURIComponent(username)}` : 'twitter://';
+      case 'linkedin':
+        // LinkedIn deep links are not fully documented; try profile slug when available
+        return username ? `linkedin://in/${encodeURIComponent(username)}` : 'linkedin://';
+      case 'pinterest':
+        return username ? `pinterest://user/${encodeURIComponent(username)}` : 'pinterest://';
+      case 'reddit':
+        return username ? `reddit://user/${encodeURIComponent(username)}` : 'reddit://';
+      case 'email': {
+        const email = extractEmailFromUrl(url) || (lead?.username?.includes('@') ? lead.username : '');
+        return email ? `mailto:${email}` : null;
+      }
+      default:
+        return null;
+    }
+  };
+
   const handleLinkPress = async (url) => {
     try {
-      // Extract platform from URL to determine the appropriate app scheme
-      const platform = lead.platform?.toLowerCase();
-      let appUrl = url;
-      
-      // Map platforms to their app schemes
-      const appSchemes = {
-        'linkedin': 'linkedin://',
-        'instagram': 'instagram://',
-        'twitter': 'twitter://',
-        'x': 'twitter://',
-        'facebook': 'fb://',
-        'youtube': 'youtube://',
-        'tiktok': 'tiktok://',
-        'snapchat': 'snapchat://',
-        'whatsapp': 'whatsapp://',
-        'telegram': 'tg://',
-        'discord': 'discord://',
-        'reddit': 'reddit://',
-        'behance': 'behance://',
-        'dribbble': 'dribbble://',
-        'github': 'github://',
-        'medium': 'medium://',
-        'pinterest': 'pinterest://',
-      };
+      // Prefer opening in the native app when possible
+      const platform = normalizePlatform(lead.platform);
+      const deepLink = buildNativeDeepLink(platform, url);
 
-      // Try to open the native app first
-      if (platform && appSchemes[platform]) {
-        const nativeUrl = appSchemes[platform];
-        
-        // Check if the app is installed
-        const canOpen = await Linking.canOpenURL(nativeUrl);
-        if (canOpen) {
-          // Try to open the native app
+      if (deepLink) {
+        const canOpenDeep = await Linking.canOpenURL(deepLink);
+        if (canOpenDeep) {
           try {
-            await Linking.openURL(nativeUrl);
+            await Linking.openURL(deepLink);
             return;
           } catch (error) {
-            console.log('Native app failed, falling back to web:', error);
+            console.log('Deep link failed, will fallback to web URL:', error);
           }
         }
       }
 
-      // Fallback to web browser
+      // Fallback to web browser - try Chrome first, then default browser
       const supported = await Linking.canOpenURL(url);
       if (supported) {
+        try {
+          // Try to open in Chrome specifically
+          const chromeUrl = url.replace(/^https?:\/\//, 'googlechrome://navigate?url=');
+          const canOpenChrome = await Linking.canOpenURL(chromeUrl);
+          if (canOpenChrome) {
+            await Linking.openURL(chromeUrl);
+            return;
+          }
+        } catch (error) {
+          console.log('Chrome not available, using default browser:', error);
+        }
+        
+        // Fallback to default browser
         await Linking.openURL(url);
       } else {
         Alert.alert('Error', 'Cannot open this URL');
