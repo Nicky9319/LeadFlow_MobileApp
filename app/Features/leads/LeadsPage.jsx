@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllBuckets } from '../../../services/bucketsService';
 import { deleteLead as deleteLeadService, getAllLeads, updateLeadNotes, updateLeadStatus } from '../../../services/leadsService';
@@ -121,7 +121,7 @@ const LeadsPage = ({ route, onBack }) => {
     if (scrollViewRef.current) {
       setTimeout(() => {
         scrollViewRef.current.scrollToEnd({ animated: true });
-      }, 100);
+      }, 300); // Increased delay to ensure keyboard is fully open
     }
   };
 
@@ -172,12 +172,17 @@ const LeadsPage = ({ route, onBack }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       <ScrollView 
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -229,7 +234,7 @@ const LeadsPage = ({ route, onBack }) => {
           onEditingStart={handleScrollToEditing}
         />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

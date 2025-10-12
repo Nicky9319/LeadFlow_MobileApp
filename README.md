@@ -1,6 +1,6 @@
-# DonnaAI - React Native App
+# LeadFlow - React Native App
 
-A modern React Native application built with Expo, converted from TypeScript to JavaScript with a comprehensive boilerplate page.
+A modern React Native application built with Expo for lead management and tracking.
 
 ## Features
 
@@ -48,7 +48,7 @@ pnpm start
 ## Project Structure
 
 ```
-donnaai/
+leadflow/
 ├── app/                    # Main application screens
 │   ├── (tabs)/            # Tab-based navigation
 │   │   ├── index.js       # Home screen

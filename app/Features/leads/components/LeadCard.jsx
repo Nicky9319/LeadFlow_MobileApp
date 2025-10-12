@@ -160,6 +160,7 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
         
       case 'linkedin':
         if (username) {
+          // Try multiple LinkedIn deep link formats
           return `linkedin://in/${encodeURIComponent(username)}`;
         }
         // Fallback to opening LinkedIn app
@@ -234,7 +235,50 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
             await Linking.openURL(deepLink);
             return;
           } else {
-            console.log('Deep link not available, falling back to web');
+            console.log('Deep link not available, trying alternative deep link formats');
+            
+            // Try alternative deep link formats for LinkedIn and Instagram
+            const extractedUsername = extractUsernameFromUrl(platform, url) || lead?.username || '';
+            if (platform === 'linkedin' && extractedUsername) {
+              const altLinkedInLinks = [
+                `linkedin://profile/${encodeURIComponent(extractedUsername)}`,
+                `linkedin://in/${encodeURIComponent(extractedUsername)}`,
+                `linkedin://pub/${encodeURIComponent(extractedUsername)}`
+              ];
+              
+              for (const altLink of altLinkedInLinks) {
+                try {
+                  const canOpenAlt = await Linking.canOpenURL(altLink);
+                  if (canOpenAlt) {
+                    console.log('Opening alternative LinkedIn deep link:', altLink);
+                    await Linking.openURL(altLink);
+                    return;
+                  }
+                } catch (error) {
+                  console.log('Alternative LinkedIn deep link failed:', altLink, error);
+                }
+              }
+            }
+            
+            if (platform === 'instagram' && extractedUsername) {
+              const altInstagramLinks = [
+                `instagram://user?username=${encodeURIComponent(extractedUsername)}`,
+                `instagram://profile/${encodeURIComponent(extractedUsername)}`
+              ];
+              
+              for (const altLink of altInstagramLinks) {
+                try {
+                  const canOpenAlt = await Linking.canOpenURL(altLink);
+                  if (canOpenAlt) {
+                    console.log('Opening alternative Instagram deep link:', altLink);
+                    await Linking.openURL(altLink);
+                    return;
+                  }
+                } catch (error) {
+                  console.log('Alternative Instagram deep link failed:', altLink, error);
+                }
+              }
+            }
           }
         } catch (error) {
           console.log('Deep link check failed:', error);
@@ -244,7 +288,17 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
       // Try Android intent-based approach for better app detection
       if (platform && platform !== 'email') {
         try {
-          const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.${platform}.android;end`;
+          // Map platform names to Android package names
+          const packageMap = {
+            'linkedin': 'com.linkedin.android',
+            'instagram': 'com.instagram.android',
+            'twitter': 'com.twitter.android',
+            'pinterest': 'com.pinterest',
+            'reddit': 'com.reddit.frontpage'
+          };
+          
+          const packageName = packageMap[platform] || `com.${platform}.android`;
+          const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=${packageName};end`;
           console.log('Trying Android intent URL:', intentUrl);
           
           const canOpenIntent = await Linking.canOpenURL(intentUrl);
@@ -711,7 +765,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: '#E5E5E7',
-    minHeight: 60,
+    minHeight: 80,
+    maxHeight: 120,
     textAlignVertical: 'top',
     lineHeight: 18,
   },
