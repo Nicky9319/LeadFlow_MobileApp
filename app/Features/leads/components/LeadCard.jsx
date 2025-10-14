@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Alert, Clipboard, Dimensions, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+
+const openSocialLink = async (appUrl, webUrl) => {
+  try {
+    // Check if the app can be opened
+    const supported = await Linking.canOpenURL(appUrl);
+    if (supported) {
+      await Linking.openURL(appUrl);
+    } else {
+      await Linking.openURL(webUrl); // fallback to web
+    }
+  } catch (error) {
+    Alert.alert('Error', 'Unable to open the link.');
+  }
+};
+
 const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange, onEditingStart }) => {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
@@ -139,6 +154,16 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
     }
   };
 
+  const preprocessUrl = (rawUrl) => {
+    try {
+      if (!rawUrl || typeof rawUrl !== 'string') return '';
+      const cleaned = rawUrl.trim().replace(/^@+/, '');
+      return cleaned;
+    } catch (_) {
+      return rawUrl || '';
+    }
+  };
+
   const buildNativeDeepLink = (platform, url) => {
     const p = normalizePlatform(platform);
     const username = extractUsernameFromUrl(p, url) || lead?.username || '';
@@ -199,19 +224,18 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
   };
 
   const handleLinkPress = async (url) => {
-    if (isOpeningLink) return; // Prevent multiple simultaneous attempts
-    
+    if (isOpeningLink) return;
+
     setIsOpeningLink(true);
     try {
-      console.log('Attempting to open URL:', url);
-      
-      // Validate URL first
-      if (!url || (!url.startsWith('http') && !url.startsWith('mailto:'))) {
+      const processedUrl = preprocessUrl(url);
+
+      if (!processedUrl || (!processedUrl.startsWith('http') && !processedUrl.startsWith('mailto:'))) {
         Alert.alert(
-          'Invalid URL', 
+          'Invalid URL',
           'This link appears to be invalid or malformed. Please check the URL format.',
           [
-            { text: 'Copy URL', onPress: () => Clipboard.setString(url || '') },
+            { text: 'Copy URL', onPress: () => Clipboard.setString(processedUrl || '') },
             { text: 'OK', style: 'default' }
           ]
         );
@@ -219,174 +243,17 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
       }
 
       const platform = normalizePlatform(lead.platform);
-      const deepLink = buildNativeDeepLink(platform, url);
-      
-      console.log('Platform:', platform, 'Deep link:', deepLink);
+      const appUrlCandidate = buildNativeDeepLink(platform, processedUrl);
+      const appUrl = appUrlCandidate || processedUrl;
+      const webUrl = processedUrl; // default given value as fallback
 
-      // Try native app first if we have a deep link
-      if (deepLink && deepLink !== url) {
-        try {
-          console.log('Checking if deep link can be opened:', deepLink);
-          const canOpenDeep = await Linking.canOpenURL(deepLink);
-          console.log('Can open deep link:', canOpenDeep);
-          
-          if (canOpenDeep) {
-            console.log('Opening deep link:', deepLink);
-            await Linking.openURL(deepLink);
-            return;
-          } else {
-            console.log('Deep link not available, trying alternative deep link formats');
-            
-            // Try alternative deep link formats for LinkedIn and Instagram
-            const extractedUsername = extractUsernameFromUrl(platform, url) || lead?.username || '';
-            if (platform === 'linkedin' && extractedUsername) {
-              const altLinkedInLinks = [
-                `linkedin://profile/${encodeURIComponent(extractedUsername)}`,
-                `linkedin://in/${encodeURIComponent(extractedUsername)}`,
-                `linkedin://pub/${encodeURIComponent(extractedUsername)}`
-              ];
-              
-              for (const altLink of altLinkedInLinks) {
-                try {
-                  const canOpenAlt = await Linking.canOpenURL(altLink);
-                  if (canOpenAlt) {
-                    console.log('Opening alternative LinkedIn deep link:', altLink);
-                    await Linking.openURL(altLink);
-                    return;
-                  }
-                } catch (error) {
-                  console.log('Alternative LinkedIn deep link failed:', altLink, error);
-                }
-              }
-            }
-            
-            if (platform === 'instagram' && extractedUsername) {
-              const altInstagramLinks = [
-                `instagram://user?username=${encodeURIComponent(extractedUsername)}`,
-                `instagram://profile/${encodeURIComponent(extractedUsername)}`
-              ];
-              
-              for (const altLink of altInstagramLinks) {
-                try {
-                  const canOpenAlt = await Linking.canOpenURL(altLink);
-                  if (canOpenAlt) {
-                    console.log('Opening alternative Instagram deep link:', altLink);
-                    await Linking.openURL(altLink);
-                    return;
-                  }
-                } catch (error) {
-                  console.log('Alternative Instagram deep link failed:', altLink, error);
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.log('Deep link check failed:', error);
-        }
-      }
-
-      // Try Android intent-based approach for better app detection
-      if (platform && platform !== 'email') {
-        try {
-          // Map platform names to Android package names
-          const packageMap = {
-            'linkedin': 'com.linkedin.android',
-            'instagram': 'com.instagram.android',
-            'twitter': 'com.twitter.android',
-            'pinterest': 'com.pinterest',
-            'reddit': 'com.reddit.frontpage'
-          };
-          
-          const packageName = packageMap[platform] || `com.${platform}.android`;
-          const intentUrl = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=${packageName};end`;
-          console.log('Trying Android intent URL:', intentUrl);
-          
-          const canOpenIntent = await Linking.canOpenURL(intentUrl);
-          if (canOpenIntent) {
-            console.log('Opening with Android intent');
-            await Linking.openURL(intentUrl);
-            return;
-          }
-        } catch (error) {
-          console.log('Android intent failed:', error);
-        }
-      }
-
-      // Fallback to web browser
-      console.log('Falling back to web browser for URL:', url);
-      
-      // First, try to open in Chrome if available
-      try {
-        const chromeUrl = `googlechrome://navigate?url=${encodeURIComponent(url)}`;
-        console.log('Trying Chrome URL:', chromeUrl);
-        
-        const canOpenChrome = await Linking.canOpenURL(chromeUrl);
-        console.log('Can open Chrome:', canOpenChrome);
-        
-        if (canOpenChrome) {
-          console.log('Opening in Chrome');
-          await Linking.openURL(chromeUrl);
-          return;
-        }
-      } catch (error) {
-        console.log('Chrome not available:', error);
-      }
-
-      // Try alternative Chrome schemes
-      try {
-        const chromeUrl2 = `googlechrome://${url.replace(/^https?:\/\//, '')}`;
-        console.log('Trying alternative Chrome URL:', chromeUrl2);
-        
-        const canOpenChrome2 = await Linking.canOpenURL(chromeUrl2);
-        if (canOpenChrome2) {
-          console.log('Opening in Chrome (alternative)');
-          await Linking.openURL(chromeUrl2);
-          return;
-        }
-      } catch (error) {
-        console.log('Alternative Chrome scheme failed:', error);
-      }
-
-      // Final fallback to default browser
-      try {
-        console.log('Opening in default browser:', url);
-        const canOpenDefault = await Linking.canOpenURL(url);
-        console.log('Can open in default browser:', canOpenDefault);
-        
-        if (canOpenDefault) {
-          await Linking.openURL(url);
-        } else {
-          throw new Error('Cannot open URL in any browser');
-        }
-      } catch (error) {
-        console.error('Failed to open URL in default browser:', error);
-        const platform = normalizePlatform(lead.platform);
-        let errorMessage = 'Unable to open this link. ';
-        
-        if (platform === 'email') {
-          errorMessage += 'No email app is installed or configured on this device.';
-        } else if (platform && platform !== 'unknown') {
-          errorMessage += `The ${platform} app is not installed, and no web browser is available to open the link.`;
-        } else {
-          errorMessage += 'No web browser is installed or available on this device.';
-        }
-        
-        Alert.alert(
-          'Cannot Open Link', 
-          errorMessage,
-          [
-            { text: 'Copy URL', onPress: () => Clipboard.setString(url) },
-            { text: 'OK', style: 'default' }
-          ]
-        );
-      }
+      await openSocialLink(appUrl, webUrl);
     } catch (error) {
-      console.error('Error in handleLinkPress:', error);
       Alert.alert(
-        'Error', 
-        'An unexpected error occurred while trying to open the link. This might be due to device restrictions or app permissions.',
+        'Error',
+        'Unable to open the link.',
         [
-          { text: 'Copy URL', onPress: () => Clipboard.setString(url) },
+          { text: 'Copy URL', onPress: () => Clipboard.setString(url || '') },
           { text: 'OK', style: 'default' }
         ]
       );
