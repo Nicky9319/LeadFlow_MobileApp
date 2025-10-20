@@ -12,6 +12,8 @@ const LeadsPage = ({ route, onBack }) => {
   const [bucketsLoading, setBucketsLoading] = useState(true);
   const [currentBucket, setCurrentBucket] = useState(null);
   const scrollViewRef = useRef(null);
+  // Track current index for card navigation
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Get bucketId from route params if available
   const bucketId = route?.params?.bucketId || selectedBucketId;
@@ -22,6 +24,7 @@ const LeadsPage = ({ route, onBack }) => {
       dispatch(setLoading(true));
       const leadsData = await getAllLeads(bucketIdParam);
       dispatch(setLeads(leadsData));
+      // Do NOT reset currentIndex here
     } catch (error) {
       console.error('Error fetching leads:', error);
       dispatch(setError(error.message));
@@ -67,6 +70,7 @@ const LeadsPage = ({ route, onBack }) => {
       if (response.status_code === 200) {
         dispatch(updateLead({ leadId, updates: { status: newStatus } }));
         console.log('Status updated successfully for lead:', leadId);
+        // Do NOT reset currentIndex here
       } else {
         console.error('Failed to update status:', response.content);
         Alert.alert('Error', 'Failed to update status');
@@ -95,6 +99,11 @@ const LeadsPage = ({ route, onBack }) => {
               const response = await deleteLeadService(leadId, bucketId);
               if (response.status_code === 200) {
                 dispatch(deleteLead(leadId));
+                // If deleted lead was last, adjust index
+                setCurrentIndex(prev => {
+                  if (leads.length <= 1) return 0;
+                  return prev >= leads.length - 1 ? leads.length - 2 : prev;
+                });
                 console.log('Lead deleted successfully:', leadId);
               } else {
                 console.error('Failed to delete lead:', response.content);
@@ -147,6 +156,14 @@ const LeadsPage = ({ route, onBack }) => {
 
     loadData();
   }, [bucketId]);
+
+  // If leads array shrinks, keep currentIndex in bounds
+  useEffect(() => {
+    setCurrentIndex(prev => {
+      if (leads.length === 0) return 0;
+      return prev >= leads.length ? leads.length - 1 : prev;
+    });
+  }, [leads.length]);
 
   // Handle Android back button
   useEffect(() => {
@@ -232,6 +249,8 @@ const LeadsPage = ({ route, onBack }) => {
           updateLeadStatus={handleUpdateLeadStatus} 
           deleteLead={handleDeleteLead}
           onEditingStart={handleScrollToEditing}
+          currentIndex={currentIndex}
+          setCurrentIndex={setCurrentIndex}
         />
       </ScrollView>
     </KeyboardAvoidingView>

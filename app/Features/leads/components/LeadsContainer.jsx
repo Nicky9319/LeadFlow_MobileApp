@@ -4,16 +4,12 @@ import LeadCard from './LeadCard';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteLead, onEditingStart }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteLead, onEditingStart, currentIndex, setCurrentIndex }) => {
   const [isEditingCounter, setIsEditingCounter] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [isSwipeEnabled, setIsSwipeEnabled] = useState(true);
 
-  // Reset to first lead when leads change
-  useEffect(() => {
-    setCurrentIndex(0);
-  }, [leads]);
+  // Remove local currentIndex state, use prop instead
 
   const handlePrevious = () => {
     setCurrentIndex(prev => prev > 0 ? prev - 1 : leads.length - 1);
@@ -37,15 +33,6 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
     setEditValue('');
   };
 
-  const handleCounterKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleCounterEdit();
-    } else if (e.key === 'Escape') {
-      setIsEditingCounter(false);
-      setEditValue('');
-    }
-  };
-
   const handleCounterBlur = () => {
     handleCounterEdit();
   };
@@ -66,9 +53,7 @@ const LeadsContainer = ({ leads = [], updateLeadNotes, updateLeadStatus, deleteL
       onPanResponderRelease: (evt, gestureState) => {
         // Handle swipe completion
         if (leads.length <= 1) return;
-        
         const swipeThreshold = 50; // Minimum distance for a swipe
-        
         if (gestureState.dx > swipeThreshold) {
           // Swipe right - go to previous lead
           handlePrevious();
