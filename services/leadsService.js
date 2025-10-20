@@ -222,5 +222,34 @@ const deleteLead = async (leadId, bucketId = null) => {
   }
 };
 
-export { addLead, deleteLead, getAllLeads, updateLeadNotes, updateLeadStatus };
+// Move lead to different bucket
+const moveLeadToBucket = async (leadId, newBucketId) => {
+  console.log('🔄 leadsService.moveLeadToBucket called with:', {
+    leadId: leadId,
+    newBucketId: newBucketId
+  });
+
+  if (!leadId || !newBucketId) {
+    console.error('❌ leadsService.moveLeadToBucket: leadId and newBucketId are required');
+    return { status_code: 400, content: { detail: 'lead_id and new_bucket_id are required' } };
+  }
+
+  try {
+    const resp = await request('/api/main-service/leads/change-lead-bucket', {
+      method: 'PUT',
+      body: JSON.stringify({ 
+        lead_id: leadId, 
+        new_bucket_id: newBucketId 
+      }),
+    });
+
+    console.log('📥 leadsService.moveLeadToBucket: Response:', resp);
+    return resp;
+  } catch (error) {
+    console.error('💥 leadsService.moveLeadToBucket: Error:', error);
+    return { status_code: 503, content: { detail: String(error) } };
+  }
+};
+
+export { addLead, deleteLead, getAllLeads, moveLeadToBucket, updateLeadNotes, updateLeadStatus };
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllBuckets } from '../../../services/bucketsService';
-import { deleteLead as deleteLeadService, getAllLeads, updateLeadNotes, updateLeadStatus } from '../../../services/leadsService';
+import { deleteLead as deleteLeadService, getAllLeads, moveLeadToBucket as moveLeadToBucketService, updateLeadNotes, updateLeadStatus } from '../../../services/leadsService';
 import { deleteLead, setError, setLeads, setLoading, setSelectedBucketId, updateLead } from '../../../store/slices/leadsSlice';
 import LeadsContainer from './components/LeadsContainer';
 
@@ -11,6 +11,7 @@ const LeadsPage = ({ route, onBack }) => {
   const { leads, loading, selectedBucketId } = useSelector((state) => state.leads);
   const [bucketsLoading, setBucketsLoading] = useState(true);
   const [currentBucket, setCurrentBucket] = useState(null);
+  const [buckets, setBuckets] = useState([]);
   const scrollViewRef = useRef(null);
   // Track current index for card navigation
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -31,11 +32,12 @@ const LeadsPage = ({ route, onBack }) => {
     }
   };
 
-  // Fetch current bucket info
+  // Fetch current bucket info and all buckets
   const fetchCurrentBucket = async () => {
     try {
       setBucketsLoading(true);
       const bucketsData = await getAllBuckets();
+      setBuckets(bucketsData);
       // Find the current bucket
       const bucket = bucketsData.find(b => b.id === bucketId);
       setCurrentBucket(bucket);
@@ -117,6 +119,42 @@ const LeadsPage = ({ route, onBack }) => {
         },
       ]
     );
+  };
+
+  // Function to move lead to different bucket
+  const handleMoveLeadToBucket = async (leadId, targetBucketId, sourceBucketId) => {
+    try {
+      console.log('Moving lead:', { leadId, targetBucketId, sourceBucketId });
+      const response = await moveLeadToBucketService(leadId, targetBucketId);
+      
+      if (response.status_code === 200) {
+        // Remove lead from current bucket's leads list
+        dispatch(deleteLead(leadId));
+        
+        // If we're currently viewing the source bucket, the lead should disappear
+        // If we're viewing the target bucket, we should refresh to show the moved lead
+        if (bucketId === targetBucketId) {
+          // Refresh leads to show the moved lead in the target bucket
+          await fetchLeads(targetBucketId);
+        }
+        
+        // Adjust current index if needed
+        setCurrentIndex(prev => {
+          if (leads.length <= 1) return 0;
+          return prev >= leads.length - 1 ? leads.length - 2 : prev;
+        });
+        
+        console.log('Lead moved successfully to bucket:', targetBucketId);
+        Alert.alert('Success', 'Lead moved successfully!');
+      } else {
+        console.error('Failed to move lead:', response.content);
+        throw new Error(response.content?.detail || 'Failed to move lead');
+      }
+    } catch (error) {
+      console.error('Error moving lead:', error);
+      Alert.alert('Error', 'Failed to move lead. Please try again.');
+      throw error; // Re-throw to let the BucketSelector handle the error
+    }
   };
 
 
@@ -248,6 +286,9 @@ const LeadsPage = ({ route, onBack }) => {
           updateLeadNotes={handleUpdateLeadNotes} 
           updateLeadStatus={handleUpdateLeadStatus} 
           deleteLead={handleDeleteLead}
+          moveLeadToBucket={handleMoveLeadToBucket}
+          buckets={buckets}
+          currentBucketId={bucketId}
           onEditingStart={handleScrollToEditing}
           currentIndex={currentIndex}
           setCurrentIndex={setCurrentIndex}

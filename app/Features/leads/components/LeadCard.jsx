@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Clipboard, Dimensions, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import BucketSelector from './BucketSelector';
 
 
 const openSocialLink = async (appUrl, webUrl) => {
@@ -16,7 +17,7 @@ const openSocialLink = async (appUrl, webUrl) => {
   }
 };
 
-const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange, onEditingStart }) => {
+const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLead, onEditingChange, onEditingStart, moveLeadToBucket, buckets, currentBucketId }) => {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [isEditingStatus, setIsEditingStatus] = useState(false);
@@ -428,6 +429,22 @@ const LeadCard = ({ lead, isActive, updateLeadNotes, updateLeadStatus, deleteLea
         )}
       </View>
 
+      {/* Bucket Section */}
+      {moveLeadToBucket && buckets && currentBucketId && (
+        <View style={styles.bucketSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Move to Bucket</Text>
+          </View>
+          <BucketSelector
+            buckets={buckets}
+            currentBucketId={currentBucketId}
+            onBucketChange={moveLeadToBucket}
+            leadId={lead.leadId}
+            style={styles.bucketSelector}
+          />
+        </View>
+      )}
+
       {/* Notes Section */}
       <View style={styles.notesSection}>
         <View style={styles.sectionHeader}>
@@ -608,6 +625,12 @@ const styles = StyleSheet.create({
   },
   statusSection: {
     marginBottom: screenWidth < 400 ? 12 : 14,
+  },
+  bucketSection: {
+    marginBottom: screenWidth < 400 ? 12 : 14,
+  },
+  bucketSelector: {
+    marginTop: 8,
   },
   notesSection: {
     marginBottom: 0,
